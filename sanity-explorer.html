@@ -1,0 +1,1967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sanity CSS Viewer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; }
+    header { background: #1a1d27; border-bottom: 1px solid #2d3148; padding: 14px 24px; display: flex; align-items: center; gap: 12px; }
+    header h1 { font-size: 15px; font-weight: 600; color: #a78bfa; }
+    header span { font-size: 12px; color: #64748b; }
+    .config { background: #1a1d27; border-bottom: 1px solid #2d3148; padding: 12px 24px; display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field label { font-size: 10px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; }
+    .field input, .field select { background: #0f1117; border: 1px solid #2d3148; border-radius: 6px; color: #e2e8f0; padding: 7px 11px; font-size: 12px; outline: none; transition: border-color 0.15s; }
+    .field input:focus, .field select:focus { border-color: #7c3aed; }
+    .field input.id-input { width: 320px; font-family: monospace; }
+    .field input.token-input { width: 180px; }
+    .btn { padding: 7px 18px; border-radius: 6px; border: none; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.15s; }
+    .btn-primary { background: #7c3aed; color: white; }
+    .btn-primary:hover { background: #6d28d9; }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-secondary { background: #1e2235; color: #94a3b8; border: 1px solid #2d3148; }
+    .btn-secondary:hover { background: #252840; color: #e2e8f0; }
+    .btn-success { background: #14532d; color: #86efac; border: 1px solid #166534; }
+    .btn-success:hover { background: #166534; }
+    .btn-success:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-danger { background: #450a0a; color: #fca5a5; border: 1px solid #7f1d1d; }
+    .btn-danger:hover { background: #7f1d1d; }
+    .btn-sm { padding: 4px 10px; font-size: 11px; }
+    .main { display: grid; grid-template-columns: 260px 1fr; height: calc(100vh - 105px); }
+    .sidebar { background: #141621; border-right: 1px solid #2d3148; overflow-y: auto; padding: 10px; }
+    .sidebar-title { font-size: 10px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; padding: 6px 4px; }
+    .solution-item { padding: 7px 9px; border-radius: 5px; cursor: pointer; font-size: 12px; color: #94a3b8; transition: all 0.1s; border: 1px solid transparent; margin-bottom: 2px; }
+    .solution-item:hover { background: #1e2235; color: #e2e8f0; }
+    .solution-item.active { background: #1e1a3a; color: #a78bfa; border-color: #4c1d95; }
+    .solution-item .sol-title { font-weight: 500; }
+    .solution-item .sol-id { font-size: 10px; font-family: monospace; color: #475569; margin-top: 1px; }
+    .content { overflow-y: auto; }
+
+    /* ---- View Tabs ---- */
+    .view-tabs { display: flex; gap: 0; border-bottom: 1px solid #2d3148; background: #141621; padding: 0 24px; }
+    .view-tab { padding: 10px 18px; font-size: 12px; font-weight: 500; color: #64748b; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; }
+    .view-tab:hover { color: #94a3b8; }
+    .view-tab.active { color: #a78bfa; border-bottom-color: #7c3aed; }
+    .view-body { padding: 20px 24px; }
+
+    /* ---- Sections ---- */
+    .solution-header { margin-bottom: 20px; }
+    .solution-header h2 { font-size: 18px; font-weight: 600; color: #f1f5f9; margin-bottom: 6px; }
+    .meta-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .meta-pill { font-size: 10px; padding: 2px 7px; border-radius: 4px; font-family: monospace; }
+    .meta-id { background: #1e2235; color: #64748b; }
+    .meta-slug { background: #1a2e1a; color: #4ade80; }
+    .section { margin-bottom: 16px; border: 1px solid #2d3148; border-radius: 8px; overflow: hidden; }
+    .section-header { background: #1a1d27; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
+    .section-header:hover { background: #1e2235; }
+    .section-title { font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+    .chevron { color: #475569; font-size: 11px; transition: transform 0.2s; }
+    .section.collapsed .chevron { transform: rotate(-90deg); }
+    .section.collapsed .section-body { display: none; }
+    .section-body { padding: 14px; }
+    .badge { font-size: 10px; padding: 2px 6px; border-radius: 8px; font-weight: 500; }
+    .badge-css { background: #1e3a8a; color: #93c5fd; }
+    .badge-import { background: #1a3a1a; color: #86efac; }
+    .badge-empty { background: #222; color: #475569; }
+    .badge-preset { background: #3a1a1a; color: #fca5a5; }
+    .badge-count { background: #2d3148; color: #94a3b8; }
+    .badge-default { background: #1a2a3a; color: #7dd3fc; }
+    .badge-toggle { background: #2a1a3a; color: #c4b5fd; }
+    .badge-changed { background: #1a2e1a; color: #86efac; }
+    .badge-unchanged { background: #1e2235; color: #475569; }
+    .badge-approved { background: #14532d; color: #86efac; }
+
+    pre { background: #0a0c14; border: 1px solid #1e2235; border-radius: 6px; padding: 12px; font-size: 11px; font-family: 'Fira Code','Consolas',monospace; overflow-x: auto; white-space: pre-wrap; word-break: break-word; color: #cbd5e1; max-height: 380px; overflow-y: auto; line-height: 1.65; position: relative; }
+    .code-wrap { position: relative; }
+    .copy-btn { font-size: 10px; padding: 3px 7px; background: #2d3148; color: #94a3b8; border: none; border-radius: 4px; cursor: pointer; }
+    .copy-btn:hover { background: #3d4168; color: #e2e8f0; }
+    .copy-btn.copied { background: #14532d; color: #86efac; }
+    .copy-btn-abs { position: absolute; top: 7px; right: 7px; }
+    .import-url { display: flex; align-items: center; gap: 8px; background: #0a0c14; border: 1px solid #1e2235; border-radius: 5px; padding: 8px 12px; margin-bottom: 5px; }
+    .import-url code { font-size: 11px; font-family: monospace; color: #86efac; flex: 1; word-break: break-all; }
+    .import-url a { color: #7c3aed; font-size: 11px; text-decoration: none; white-space: nowrap; }
+    .no-css { color: #475569; font-size: 12px; font-style: italic; }
+    .loading { display: flex; align-items: center; gap: 10px; color: #64748b; font-size: 13px; padding: 40px 24px; }
+    .spinner { width: 16px; height: 16px; border: 2px solid #2d3148; border-top-color: #7c3aed; border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-box { background: #1f0a0a; border: 1px solid #7f1d1d; border-radius: 8px; padding: 14px; color: #fca5a5; font-size: 12px; margin: 20px 24px; }
+    .success-box { background: #052e16; border: 1px solid #166534; border-radius: 8px; padding: 14px; color: #86efac; font-size: 12px; margin-bottom: 14px; }
+    .info-box { background: #0f172a; border: 1px solid #1e3a8a; border-radius: 8px; padding: 14px; color: #93c5fd; font-size: 12px; margin-bottom: 14px; }
+
+    /* ---- Customization Module Cards ---- */
+    .cux-module { border: 1px solid #2d3148; border-radius: 8px; margin-bottom: 14px; overflow: hidden; }
+    .cux-module-header { background: #1a1d27; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+    .cux-module-header:hover { background: #1e2235; }
+    .cux-module-title { font-size: 13px; font-weight: 600; color: #e2e8f0; display: flex; align-items: center; gap: 8px; }
+    .cux-module-key { font-size: 10px; font-family: monospace; color: #64748b; }
+    .cux-module-body { padding: 14px; }
+    .cux-module.collapsed .cux-module-body { display: none; }
+    .cux-module.collapsed .chevron { transform: rotate(-90deg); }
+
+    /* ---- Input Rows ---- */
+    .inputs-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 12px; }
+    .inputs-table th { text-align: left; color: #64748b; font-weight: 600; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em; padding: 5px 8px; border-bottom: 1px solid #2d3148; }
+    .inputs-table td { padding: 6px 8px; border-bottom: 1px solid #1e2235; vertical-align: top; }
+    .inputs-table tr:last-child td { border-bottom: none; }
+    .input-type { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-family: monospace; background: #1e2235; color: #94a3b8; white-space: nowrap; }
+    .var-name { font-family: monospace; color: #fbbf24; font-size: 11px; }
+    .root-var { font-family: monospace; color: #818cf8; font-size: 11px; }
+    .default-val { font-family: monospace; color: #34d399; font-size: 11px; max-width: 180px; word-break: break-all; }
+    .color-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; border: 1px solid #2d3148; vertical-align: middle; margin-right: 4px; }
+
+    /* ---- Module sub-sections ---- */
+    .sub-label { font-size: 10px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; margin: 10px 0 6px; }
+
+    /* ---- Preset blocks ---- */
+    .preset-block { border: 1px solid #2d1a1a; border-radius: 7px; margin-bottom: 12px; overflow: hidden; }
+    .preset-title { background: #1a0f0f; padding: 9px 13px; font-size: 12px; font-weight: 600; color: #fca5a5; display: flex; align-items: center; gap: 8px; }
+    .preset-body { padding: 12px; }
+
+    /* ---- Combined view ---- */
+    .combined-view pre { max-height: none; }
+
+    /* ---- Snippet Editor ---- */
+    .editor-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; padding: 14px 16px; background: #141621; border: 1px solid #2d3148; border-radius: 8px; }
+    .editor-toolbar-section { display: flex; align-items: center; gap: 8px; }
+    .editor-toolbar-divider { width: 1px; height: 24px; background: #2d3148; margin: 0 4px; }
+    .editor-status { font-size: 11px; color: #64748b; }
+    .editor-status strong { color: #a78bfa; }
+    .folder-path-input { font-size: 11px; font-family: monospace; color: #e2e8f0; background: #0f1117; border: 1px solid #2d3148; border-radius: 4px; padding: 4px 9px; width: 280px; outline: none; transition: border-color 0.15s; }
+    .folder-path-input:focus { border-color: #7c3aed; }
+    .folder-path-input.has-folder { border-color: #166534; color: #4ade80; background: #0a1a0a; }
+
+    .snippet-card { border: 1px solid #2d3148; border-radius: 8px; margin-bottom: 14px; overflow: hidden; }
+    .snippet-card.has-changes { border-color: #4c1d95; }
+    .snippet-card.approved { border-color: #166534; }
+    .snippet-card-header { background: #1a1d27; padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
+    .snippet-card.has-changes .snippet-card-header { background: #1a1030; }
+    .snippet-card.approved .snippet-card-header { background: #052e16; }
+    .snippet-card-title { font-size: 12px; font-weight: 600; color: #e2e8f0; flex: 1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .snippet-card-filename { font-size: 10px; font-family: monospace; color: #64748b; }
+    .snippet-card-body { padding: 14px; }
+    .snippet-card.collapsed .snippet-card-body { display: none; }
+
+    .diff-container { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .diff-pane { }
+    .diff-pane-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+    .diff-pane-label.old { color: #f87171; }
+    .diff-pane-label.new { color: #86efac; }
+    .diff-pre { background: #0a0c14; border: 1px solid #1e2235; border-radius: 6px; padding: 10px; font-size: 10.5px; font-family: 'Fira Code','Consolas',monospace; overflow-x: auto; white-space: pre-wrap; word-break: break-word; max-height: 320px; overflow-y: auto; line-height: 1.7; }
+    .diff-line { display: block; padding: 0 4px; border-radius: 2px; }
+    .diff-line.removed { background: rgba(239,68,68,0.15); color: #fca5a5; }
+    .diff-line.added { background: rgba(34,197,94,0.12); color: #86efac; }
+    .diff-line.context { color: #64748b; }
+
+    .approve-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #1e2235; }
+    .approve-checkbox { width: 16px; height: 16px; accent-color: #7c3aed; cursor: pointer; }
+    .approve-label { font-size: 12px; color: #94a3b8; cursor: pointer; user-select: none; }
+
+    .push-summary { background: #141621; border: 1px solid #2d3148; border-radius: 8px; padding: 16px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+    .push-summary-stats { display: flex; gap: 16px; flex-wrap: wrap; }
+    .push-stat { display: flex; flex-direction: column; gap: 2px; }
+    .push-stat-value { font-size: 20px; font-weight: 700; color: #a78bfa; }
+    .push-stat-label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; }
+    .push-stat-value.green { color: #4ade80; }
+    .push-stat-value.yellow { color: #fbbf24; }
+
+    .push-result { font-size: 11px; padding: 3px 8px; border-radius: 4px; margin-top: 6px; }
+    .push-result.ok { background: #052e16; color: #86efac; }
+    .push-result.err { background: #1f0a0a; color: #fca5a5; }
+    .push-result.pending { background: #1e2235; color: #64748b; }
+
+    .empty-editor { text-align: center; padding: 60px 24px; color: #475569; }
+    .empty-editor h3 { font-size: 15px; color: #64748b; margin-bottom: 8px; }
+    .empty-editor p { font-size: 12px; line-height: 1.6; }
+
+    /* ---- Snippet selection (pre-pull) ---- */
+    .select-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding: 8px 12px; background: #141621; border: 1px solid #2d3148; border-radius: 6px; }
+    .select-bar-label { font-size: 11px; color: #64748b; flex: 1; }
+    .select-bar-label strong { color: #a78bfa; }
+    .snippet-select-cb { width: 15px; height: 15px; accent-color: #7c3aed; cursor: pointer; flex-shrink: 0; }
+    .snippet-card-header .snippet-select-cb { margin-right: 2px; }
+
+    /* ---- Grouped module cards (pre-pull) ---- */
+    .module-group { border: 1px solid #2d3148; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+    .module-group.all-selected { border-color: #4c1d95; }
+    .module-group.partially-selected { border-color: #3d2a6a; }
+    .module-group-header { background: #1a1d27; padding: 10px 14px; display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+    .module-group-header:hover { background: #1e2235; }
+    .module-group.all-selected .module-group-header { background: #1a1030; }
+    .module-group-title { font-size: 12px; font-weight: 600; color: #e2e8f0; flex: 1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .module-group-children { border-top: 1px solid #1e2235; }
+    .module-group.group-collapsed .module-group-children { display: none; }
+    .module-group.group-collapsed .group-chevron { transform: rotate(-90deg); }
+    .group-chevron { color: #475569; font-size: 11px; transition: transform 0.2s; flex-shrink: 0; }
+    .child-snippet-row { display: flex; align-items: center; gap: 10px; padding: 7px 14px 7px 38px; border-bottom: 1px solid #1a1d27; }
+    .child-snippet-row:last-child { border-bottom: none; }
+    .child-snippet-row:hover { background: #141621; }
+    .child-snippet-label { font-size: 11px; color: #94a3b8; flex: 1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .child-snippet-filename { font-size: 10px; font-family: monospace; color: #475569; }
+    .child-type-tag { font-size: 9px; padding: 1px 5px; border-radius: 3px; font-family: monospace; background: #2a1a3a; color: #c4b5fd; white-space: nowrap; }
+
+    /* ---- Description Toggle ---- */
+    .desc-toggle { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: #7c3aed; cursor: pointer; background: #1e1a3a; border: 1px solid #4c1d95; border-radius: 4px; padding: 3px 9px; user-select: none; transition: background 0.15s; margin-top: 6px; }
+    .desc-toggle:hover { background: #2a2050; }
+    .desc-toggle .desc-arrow { font-size: 9px; transition: transform 0.2s; }
+    .desc-toggle.open .desc-arrow { transform: rotate(90deg); }
+    .desc-panel { display: none; margin-top: 10px; padding: 12px 14px; background: #0f1117; border: 1px solid #2d3148; border-radius: 6px; }
+    .desc-panel.open { display: block; }
+
+    /* ---- Portable Text rendering ---- */
+    .pt-body { font-size: 12px; color: #94a3b8; line-height: 1.7; }
+    .pt-body p { margin-bottom: 8px; }
+    .pt-body p:last-child { margin-bottom: 0; }
+    .pt-body strong { color: #e2e8f0; font-weight: 600; }
+    .pt-body em { font-style: italic; }
+    .pt-body a { color: #7c3aed; text-decoration: underline; word-break: break-all; }
+    .pt-body a:hover { color: #a78bfa; }
+    .pt-body h1, .pt-body h2, .pt-body h3, .pt-body h4 { color: #e2e8f0; font-weight: 600; margin-bottom: 6px; }
+    .pt-body h1 { font-size: 15px; }
+    .pt-body h2 { font-size: 14px; }
+    .pt-body h3 { font-size: 13px; }
+    .pt-body h4 { font-size: 12px; }
+    .pt-body ul, .pt-body ol { padding-left: 18px; margin-bottom: 8px; }
+    .pt-body li { margin-bottom: 3px; }
+    .pt-body .pt-image { margin: 10px 0; }
+    .pt-body .pt-image img { max-width: 100%; border-radius: 5px; border: 1px solid #2d3148; display: block; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Sanity CSS Viewer</h1>
+  <span>rfe6d7g7</span>
+</header>
+
+<div class="config">
+  <div class="field">
+    <label>Solution ID</label>
+    <input class="id-input" id="solutionId" type="text"
+      value="9e3a8362-00f3-4f8b-8928-ce3139b742d4" placeholder="Sanity _id">
+  </div>
+  <div class="field">
+    <label>Dataset</label>
+    <select id="dataset" style="width:120px">
+      <option value="production">production</option>
+      <option value="dev">dev</option>
+    </select>
+  </div>
+  <div class="field">
+    <label>API Token</label>
+    <input class="token-input" id="token" type="password" placeholder="Loading from config...">
+  </div>
+  <button class="btn btn-primary" id="fetchBtn" onclick="fetchSolution()">Fetch</button>
+  <button class="btn btn-secondary" onclick="loadAllSolutions()">List All</button>
+</div>
+
+<div class="main">
+    <div class="sidebar">
+        <div class="sidebar-title">Solutions</div>
+        <input id="solutionSearch" type="text" placeholder="Filter..."
+          style="width:100%;background:#0f1117;border:1px solid #2d3148;border-radius:5px;
+                 color:#e2e8f0;padding:6px 9px;font-size:11px;outline:none;margin-bottom:8px;box-sizing:border-box"
+          oninput="filterSolutions(this.value)">
+        <div id="solutionList" style="color:#475569;font-size:12px;padding:6px 4px">Click <span style="color:#7c3aed;cursor:pointer;text-decoration:underline;" onclick="loadAllSolutions()">List All</span></div>
+      </div>
+      
+  <div class="content" id="content">
+    <div class="loading" style="padding:60px;justify-content:center;flex-direction:column;align-items:center;height:100%">
+      <div style="color:#475569;font-size:14px">Enter a solution ID and click Fetch</div>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+const PROJECT_ID = 'rfe6d7g7';
+const API_VERSION = '2023-06-21';
+
+// Load token from config file if available
+document.addEventListener('DOMContentLoaded', () => {
+  const tokenInput = document.getElementById('token');
+  if (typeof CONFIG !== 'undefined' && CONFIG.TOKEN) {
+    tokenInput.value = CONFIG.TOKEN;
+  } else {
+    tokenInput.placeholder = 'Enter API token manually';
+  }
+});
+
+let currentSolution = null;
+let currentView = 'explorer';
+
+// Snippet editor state
+let editorFolderHandle = null;   // FileSystemDirectoryHandle for the snippets folder
+let editorFolderPath = '';       // Display path shown in the in-app input
+
+// ---- Persist folder handle across reloads via IndexedDB ----
+const IDB_NAME = 'sanity-explorer';
+const IDB_STORE = 'folder';
+const IDB_KEY = 'lastFolder';
+
+function openIdb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(IDB_STORE);
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror = e => reject(e.target.error);
+  });
+}
+async function saveFolderHandle(handle) {
+  try {
+    const db = await openIdb();
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(handle, IDB_KEY);
+    await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = rej; });
+  } catch (_) {}
+}
+async function loadFolderHandle() {
+  try {
+    const db = await openIdb();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const req = tx.objectStore(IDB_STORE).get(IDB_KEY);
+      req.onsuccess = e => resolve(e.target.result || null);
+      req.onerror = e => reject(e.target.error);
+    });
+  } catch (_) { return null; }
+}
+async function restoreFolderHandle() {
+  const handle = await loadFolderHandle();
+  if (!handle) return;
+  try {
+    const perm = await handle.queryPermission({ mode: 'readwrite' });
+    // Store the handle regardless — permission will be re-requested on first action
+    editorFolderHandle = handle;
+    editorFolderPath = handle.name;
+    const input = document.getElementById('folder-path-input');
+    if (input) {
+      input.value = handle.name;
+      if (perm === 'granted') input.classList.add('has-folder');
+    }
+  } catch (_) {}
+}
+
+// Ensures readwrite permission is granted on the current folder handle.
+// Returns true if ready, false if the user denied or no handle exists.
+async function ensureFolderPermission() {
+  if (!editorFolderHandle) return false;
+  try {
+    let perm = await editorFolderHandle.queryPermission({ mode: 'readwrite' });
+    if (perm === 'prompt') perm = await editorFolderHandle.requestPermission({ mode: 'readwrite' });
+    if (perm === 'granted') {
+      const input = document.getElementById('folder-path-input');
+      if (input) input.classList.add('has-folder');
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
+let editorSnippets = [];         // Array of snippet objects with sanity + local content
+let editorApproved = new Set();  // Set of snippet keys that are approved for push
+let editorSelected = new Set();  // Set of snippet keys selected for pull (pre-load stage)
+
+function getConfig() {
+  return {
+    token: document.getElementById('token').value.trim(),
+    dataset: document.getElementById('dataset').value,
+  };
+}
+function filterSolutions(query) {
+  const q = query.toLowerCase().trim();
+  document.querySelectorAll('.solution-item').forEach(el => {
+    const title = el.querySelector('.sol-title')?.textContent.toLowerCase() || '';
+    const id = el.querySelector('.sol-id')?.textContent.toLowerCase() || '';
+    el.style.display = (!q || title.includes(q) || id.includes(q)) ? '' : 'none';
+  });
+}
+
+async function sanityQuery(query, params = {}) {
+  const { token, dataset } = getConfig();
+  const url = new URL(`https://${PROJECT_ID}.api.sanity.io/v${API_VERSION}/data/query/${dataset}`);
+  url.searchParams.set('query', query);
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(`$${k}`, JSON.stringify(v));
+  const res = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error(`Sanity API ${res.status}: ${await res.text()}`);
+  return (await res.json()).result;
+}
+
+async function sanityMutate(mutations) {
+  const { token, dataset } = getConfig();
+  const url = `https://${PROJECT_ID}.api.sanity.io/v${API_VERSION}/data/mutate/${dataset}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ mutations }),
+  });
+  if (!res.ok) throw new Error(`Sanity mutate ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+async function fetchSolution() {
+  const id = document.getElementById('solutionId').value.trim();
+  if (!id) return;
+  document.getElementById('fetchBtn').disabled = true;
+  document.getElementById('content').innerHTML = `<div class="loading"><div class="spinner"></div> Querying Sanity...</div>`;
+  try {
+    const solution = await sanityQuery(
+      `*[_type == "solution" && _id == $id && !(_id in path("drafts.**"))][0] {
+        _id, title, "slug": slug.current,
+        description[] { ..., asset->{ _id, url } },
+        customizationDescription[] { ..., asset->{ _id, url } },
+        integrationModules,
+        presets[] { _key, name, integrationModules },
+        customizationModules[] {
+          _key, name, inputType,
+          description[] { ..., asset->{ _id, url } },
+          "cssTemplate": cssBlock.css.code,
+          "jsTemplate": jsBlock.js.code,
+          inputs[] {
+            _key, _type, label, required, encloseInQuotes,
+            variable { variableName, rootVar, defaultValue },
+            "toggleCssCode": cssBlock.css.code,
+            "toggleJsCode": jsBlock.js.code,
+            externalImports[] { _type, srcUrl }
+          }
+        }
+      }`,
+      { id }
+    );
+    if (!solution) {
+      document.getElementById('content').innerHTML = `<div class="error-box">No solution found with ID: <code>${esc(id)}</code> — try switching dataset.</div>`;
+      return;
+    }
+    currentSolution = solution;
+    // Reset editor state when solution changes (keep folder — it's project-wide)
+    editorSnippets = [];
+    editorApproved = new Set();
+    editorSelected = new Set();
+    renderContent();
+    highlightSidebarItem(id);
+  } catch (e) {
+    document.getElementById('content').innerHTML = `<div class="error-box">⚠ ${esc(e.message)}</div>`;
+  } finally {
+    document.getElementById('fetchBtn').disabled = false;
+  }
+}
+
+function renderContent() {
+  if (!currentSolution) return;
+  const tabs = `
+    <div class="view-tabs">
+      <div class="view-tab ${currentView==='explorer'?'active':''}" onclick="switchView('explorer')">🔍 Explorer</div>
+      <div class="view-tab ${currentView==='combined'?'active':''}" onclick="switchView('combined')">📄 All CSS Combined</div>
+      <div class="view-tab ${currentView==='editor'?'active':''}" onclick="switchView('editor')">✏️ Snippet Editor</div>
+    </div>`;
+  let body;
+  if (currentView === 'explorer') body = renderExplorer(currentSolution);
+  else if (currentView === 'combined') body = renderCombined(currentSolution);
+  else body = renderEditor();
+  document.getElementById('content').innerHTML = tabs + `<div class="view-body">${body}</div>`;
+  if (currentView === 'editor') bindEditorEvents();
+}
+
+function switchView(view) {
+  currentView = view;
+  renderContent();
+}
+
+// ============================================================
+// VIEW 1: EXPLORER
+// ============================================================
+function renderExplorer(sol) {
+  let html = `
+    <div class="solution-header">
+      <h2>${esc(sol.title || 'Untitled')}</h2>
+      <div class="meta-row">
+        <span class="meta-pill meta-id">${esc(sol._id)}</span>
+        ${sol.slug ? `<span class="meta-pill meta-slug">/${esc(sol.slug)}</span>` : ''}
+      </div>
+      ${renderDescriptionToggle('sol-desc', sol.description)}
+      ${renderDescriptionToggle('sol-cux-desc', sol.customizationDescription)}
+    </div>`;
+
+  // Integration Modules
+  const { rawBlocks, importUrls } = extractRawCss(sol.integrationModules);
+  const hasIntCss = rawBlocks.length || importUrls.length;
+  html += section('sec-int', `🔌 Integration Modules ${hasIntCss ? badge('css','has CSS') : badge('empty','no CSS')}`,
+    renderCssModules(sol.integrationModules), false);
+
+  // Presets
+  const presetsHtml = (sol.presets || []).map(p => `
+    <div class="preset-block">
+      <div class="preset-title">${badge('preset','preset')} ${esc(p.name||p._key)} <span style="font-size:10px;font-family:monospace;color:#94a3b8">${esc(p._key)}</span></div>
+      <div class="preset-body">${renderCssModules(p.integrationModules)}</div>
+    </div>`).join('');
+  html += section('sec-presets', `🎨 Presets ${badge('count', sol.presets?.length||0)}`,
+    sol.presets?.length ? presetsHtml : '<p class="no-css">No presets.</p>', !(sol.presets?.length));
+
+  // Customization Modules
+  const cuxCount = sol.customizationModules?.length || 0;
+  const cuxHtml = (sol.customizationModules || []).map((m, i) => renderCuxModule(m, i)).join('');
+  const cuxToolbar = cuxCount > 0 ? `
+    <div style="display:flex;gap:8px;margin-bottom:12px;padding:8px 12px;background:#141621;border:1px solid #2d3148;border-radius:6px;align-items:center;flex-wrap:wrap;">
+      <button class="btn btn-secondary btn-sm" onclick="expandAllCux()">▼ Expand All</button>
+      <button class="btn btn-secondary btn-sm" onclick="collapseAllCux()">▲ Collapse All</button>
+      <div style="width:1px;height:24px;background:#2d3148;margin:0 4px;"></div>
+      <input type="text" id="cux-filter-input" placeholder="Filter modules..."
+        style="background:#0f1117;border:1px solid #2d3148;border-radius:6px;color:#e2e8f0;padding:6px 11px;font-size:11px;outline:none;width:180px;transition:border-color 0.15s;"
+        oninput="filterCuxModules(this.value)"
+        onfocus="this.style.borderColor='#7c3aed'"
+        onblur="this.style.borderColor='#2d3148'">
+      <span style="font-size:11px;color:#64748b;margin-left:auto;align-self:center;">${cuxCount} modules</span>
+    </div>` : '';
+  html += section('sec-cux', `⚙️ Customization Modules ${badge('count', cuxCount)}`,
+    sol.customizationModules?.length ? (cuxToolbar + cuxHtml) : '<p class="no-css">None defined.</p>', false);
+
+  return html;
+}
+
+function renderCuxModule(m, i) {
+  const genCss = generateModuleCss(m);
+  const inputRows = (m.inputs || []).map(inp => {
+    const dv = inp.variable?.defaultValue || '';
+    const isColor = inp._type === 'colorInput' && /^#/.test(dv);
+    const swatchHtml = isColor ? `<span class="color-swatch" style="background:${esc(dv)}"></span>` : '';
+    const typeLabel = inp._type?.replace('Input','') || '';
+    const extraInfo = inp._type === 'toggleInput'
+      ? `<br><span style="color:#64748b;font-size:10px">Has own CSS block — injected when toggled ON</span>`
+      : '';
+    return `<tr>
+      <td><span class="input-type">${esc(typeLabel)}</span></td>
+      <td style="color:#e2e8f0;font-size:11px">${esc(inp.label||inp._key)}${inp.required?` <span style="color:#f87171;font-size:9px">required</span>`:''}</td>
+      <td><span class="var-name">${inp.variable?.variableName ? `{{${esc(inp.variable.variableName)}}}` : '—'}</span></td>
+      <td><span class="root-var">${inp.variable?.rootVar ? `--${esc(inp.variable.rootVar)}` : '—'}</span></td>
+      <td>${swatchHtml}<span class="default-val">${esc(dv)||'<span style="color:#475569">none</span>'}${extraInfo}</span></td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <div class="cux-module" id="cux-${i}">
+      <div class="cux-module-header" onclick="toggleCux('cux-${i}')">
+        <div class="cux-module-title">
+          ${esc(m.name||m._key)}
+          <span class="cux-module-key">${esc(m._key)}</span>
+          ${m.inputType === 'repeatable' ? badge('toggle','repeatable') : ''}
+        </div>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="cux-module-body">
+        ${renderDescriptionToggle('cux-' + m._key, m.description)}
+        ${m.inputs?.length ? `
+          <div class="sub-label" style="margin-top:${m.description?.length ? '14px' : '0'}">Inputs &amp; Variables</div>
+          <table class="inputs-table">
+            <thead><tr>
+              <th>Type</th><th>Label</th><th>Template Var</th><th>CSS Custom Prop</th><th>Default Value</th>
+            </tr></thead>
+            <tbody>${inputRows}</tbody>
+          </table>` : '<p class="no-css">No inputs defined.</p>'}
+
+        ${m.cssTemplate ? `
+          <div class="sub-label">CSS Template <span style="color:#475569;font-weight:400;text-transform:none;font-size:10px">(raw — {{variables}} not yet replaced)</span></div>
+          <div class="code-wrap">
+            <pre>${esc(m.cssTemplate)}</pre>
+            <button class="copy-btn copy-btn-abs" onclick="copyCode(this)">Copy</button>
+          </div>` : ''}
+
+        ${genCss ? `
+          <div class="sub-label">Generated CSS <span style="color:#475569;font-weight:400;text-transform:none;font-size:10px">(defaults applied)</span></div>
+          <div class="code-wrap">
+            <pre>${esc(genCss)}</pre>
+            <button class="copy-btn copy-btn-abs" onclick="copyCode(this)">Copy</button>
+          </div>` : ''}
+      </div>
+    </div>`;
+}
+
+// ============================================================
+// VIEW 2: ALL CSS COMBINED
+// ============================================================
+function renderCombined(sol) {
+  const parts = [];
+
+  // 1. Integration Modules
+  const intCss = buildIntegrationCss(sol.integrationModules, sol.title);
+  if (intCss) parts.push(intCss);
+
+  // 2. Presets
+  for (const preset of sol.presets || []) {
+    const pc = buildIntegrationCss(preset.integrationModules, `${sol.title} — Preset: ${preset.name||preset._key}`);
+    if (pc) parts.push(pc);
+  }
+
+  // 3. Customization Modules (with defaults)
+  for (const m of sol.customizationModules || []) {
+    const mc = generateModuleCss(m);
+    if (mc?.trim()) {
+      parts.push(
+        `/* ============================================================ */\n` +
+        `/* CUSTOMIZATION MODULE: ${(m.name||m._key).toUpperCase()} */\n` +
+        `/* key: ${m._key} */\n` +
+        `/* ============================================================ */\n\n` +
+        mc
+      );
+    }
+  }
+
+  const combined = parts.join('\n\n\n');
+
+  if (!combined.trim()) {
+    return `<p class="no-css" style="padding:20px">No CSS found for this solution.</p>`;
+  }
+
+  return `
+    <div class="combined-view">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:12px;color:#64748b">${combined.split('\n').length} lines · defaults applied to customization modules · toggle inputs shown as ON</div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy All CSS</button>
+      </div>
+      <div class="code-wrap">
+        <pre>${esc(combined)}</pre>
+      </div>
+    </div>`;
+}
+
+// ============================================================
+// VIEW 3: SNIPPET EDITOR
+// ============================================================
+
+/**
+ * Extract all editable CSS snippets from a solution.
+ * Returns an array of snippet descriptor objects.
+ *
+ * Manifest entry shape:
+ * {
+ *   key: string,           // unique key for this snippet (used as filename stem)
+ *   filename: string,      // e.g. "menu-backgrounds__0b5d92267ad2.css"
+ *   label: string,         // human-readable label for display
+ *   sanityPath: string,    // dot-path for the patch mutation
+ *   sanityCode: string,    // current CSS content from Sanity (may be null/empty)
+ * }
+ */
+function extractSnippets(sol) {
+  const snippets = [];
+
+  function slugify(str) {
+    return (str || '').toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .substring(0, 40);
+  }
+
+  // 1. Integration modules — rawCss blocks
+  (sol.integrationModules || []).forEach(m => {
+    if (m._type === 'rawCss' && m._key) {
+      snippets.push({
+        key: `integration__${m._key}`,
+        filename: `integration__${m._key}.css`,
+        label: `Integration Module (rawCss) — ${m._key}`,
+        sanityPath: `integrationModules[_key=="${m._key}"].css.code`,
+        sanityCode: m.css?.code || '',
+      });
+    }
+  });
+
+  // 2. Customization modules — cssTemplate + toggle inputs
+  (sol.customizationModules || []).forEach(m => {
+    const mSlug = slugify(m.name || m._key);
+
+    // Module-level CSS template
+    if (m.cssTemplate != null) {
+      snippets.push({
+        key: `cux__${m._key}__template`,
+        filename: `${mSlug}__${m._key}.css`,
+        label: `${m.name || m._key} — CSS Template`,
+        sanityPath: `customizationModules[_key=="${m._key}"].cssBlock.css.code`,
+        sanityCode: m.cssTemplate || '',
+      });
+    }
+
+    // Toggle inputs that have their own CSS block
+    (m.inputs || []).forEach(inp => {
+      if (inp._type === 'toggleInput') {
+        const iSlug = slugify(inp.label || inp._key);
+        snippets.push({
+          key: `cux__${m._key}__toggle__${inp._key}`,
+          filename: `${mSlug}__${iSlug}__${inp._key}.toggle.css`,
+          label: `${m.name || m._key} → ${inp.label || inp._key} (toggle CSS)`,
+          sanityPath: `customizationModules[_key=="${m._key}"].inputs[_key=="${inp._key}"].cssBlock.css.code`,
+          sanityCode: inp.toggleCssCode || '',
+        });
+      }
+    });
+  });
+
+  return snippets;
+}
+
+/**
+ * Group a flat snippets array by customization module (or "integration" for integration snippets).
+ * Returns: [{ groupKey, groupLabel, snippets: [...] }, ...]
+ */
+function groupSnippets(allSnippets) {
+  const groups = new Map();
+  for (const s of allSnippets) {
+    let groupKey, groupLabel;
+    if (s.key.startsWith('integration__')) {
+      groupKey = '__integration__';
+      groupLabel = 'Integration Modules';
+    } else {
+      // key format: cux__<moduleKey>__template  or  cux__<moduleKey>__toggle__<inputKey>
+      // moduleKey is the Sanity _key (hex string, no underscores), so split on known suffixes
+      const templateSuffix = '__template';
+      const toggleMarker = '__toggle__';
+      if (s.key.endsWith(templateSuffix)) {
+        groupKey = s.key.slice('cux__'.length, -templateSuffix.length);
+      } else {
+        const toggleIdx = s.key.indexOf(toggleMarker);
+        groupKey = toggleIdx !== -1 ? s.key.slice('cux__'.length, toggleIdx) : s.key;
+      }
+      // Derive label from the snippet label (everything before " —" or " →")
+      groupLabel = s.label.split(/\s[—→]\s/)[0];
+    }
+    if (!groups.has(groupKey)) groups.set(groupKey, { groupKey, groupLabel, snippets: [] });
+    groups.get(groupKey).snippets.push(s);
+  }
+  return Array.from(groups.values());
+}
+
+/**
+ * Build the header comment block prepended to each pulled CSS file.
+ * Stripped before diff comparison and before pushing back to Sanity.
+ */
+function buildFileHeader(s) {
+  const lines = ['/* ============================================================'];
+  // Derive module name and snippet type from label
+  const arrowIdx = s.label.indexOf(' → ');
+  const dashIdx = s.label.indexOf(' — ');
+  if (arrowIdx !== -1) {
+    lines.push(` * Module:  ${s.label.substring(0, arrowIdx)}`);
+    const rest = s.label.substring(arrowIdx + 3);
+    const toggleLabel = rest.replace(/\s*\(toggle CSS\)\s*$/, '');
+    lines.push(` * Toggle:  ${toggleLabel}`);
+  } else if (dashIdx !== -1) {
+    lines.push(` * Module:  ${s.label.substring(0, dashIdx)}`);
+    lines.push(` * Type:    CSS Template`);
+  } else {
+    lines.push(` * Source:  ${s.label}`);
+  }
+  lines.push(` * Path:    ${s.sanityPath}`);
+  lines.push(` * File:    ${s.filename}`);
+  lines.push(' * ============================================================');
+  lines.push(' * Edit the CSS below this header block.');
+  lines.push(' * DO NOT edit or remove this header — it is stripped on push.');
+  lines.push(' * ============================================================ */');
+  return lines.join('\n');
+}
+
+const FILE_HEADER_SENTINEL = '/* ============================================================';
+
+/**
+ * Strip the header comment block from file content before diffing or pushing.
+ */
+function stripFileHeader(content) {
+  if (!content || !content.trimStart().startsWith(FILE_HEADER_SENTINEL)) return content;
+  // Find the closing line of the header block
+  const closingMarker = ' * ============================================================ */';
+  const closingIdx = content.indexOf(closingMarker);
+  if (closingIdx === -1) return content;
+  return content.substring(closingIdx + closingMarker.length).replace(/^\n+/, '');
+}
+
+function renderEditor() {
+  if (!currentSolution) return '<div class="empty-editor"><h3>No solution loaded</h3><p>Fetch a solution first.</p></div>';
+
+  const allSnippets = extractSnippets(currentSolution);
+  const cssSnippets = allSnippets.filter(s => s.sanityCode && s.sanityCode.trim());
+  const totalCount = allSnippets.length;
+  const withCssCount = cssSnippets.length;
+
+  const changedCount = editorSnippets.filter(s => s.localCode !== null && s.localCode !== s.sanityCode).length;
+  const approvedCount = editorApproved.size;
+  const hasFolderClass = editorFolderHandle ? 'has-folder' : '';
+
+  let html = `
+    <div class="editor-toolbar">
+      <div class="editor-toolbar-section" style="flex-wrap:wrap;gap:6px">
+        <input type="text" class="folder-path-input ${hasFolderClass}" id="folder-path-input"
+          placeholder="Snippets folder path  (or click Browse)"
+          value="${esc(editorFolderPath)}"
+          title="Type a label for this folder, or use Browse to select it">
+        <button class="btn btn-secondary btn-sm" id="btn-browse" title="Browse for snippets folder">Browse…</button>
+      </div>
+      <div class="editor-toolbar-divider"></div>
+      <div class="editor-toolbar-section">
+        <button class="btn btn-secondary btn-sm" id="btn-pull" title="Pull selected snippets from Sanity into the selected folder">⬇ Pull${editorSnippets.length === 0 && editorSelected.size > 0 ? ` (${editorSelected.size})` : ''}</button>
+        <button class="btn btn-secondary btn-sm" id="btn-load" title="Load edited files from the selected folder">⟳ Load &amp; Diff</button>
+        <button class="btn btn-danger btn-sm" id="btn-clear" title="Delete all pulled snippet files and manifest from the folder">✕ Clear Folder</button>
+      </div>
+      <div class="editor-toolbar-divider"></div>
+      <div class="editor-toolbar-section">
+        <span class="editor-status">
+          <strong>${totalCount}</strong> snippets ·
+          <strong>${withCssCount}</strong> with CSS ·
+          <strong>${changedCount}</strong> changed ·
+          <strong>${approvedCount}</strong> approved
+        </span>
+      </div>
+      ${approvedCount > 0 ? `
+      <div class="editor-toolbar-divider"></div>
+      <div class="editor-toolbar-section">
+        <button class="btn btn-success btn-sm" id="btn-push">⬆ Push ${approvedCount} Approved</button>
+      </div>` : ''}
+    </div>
+    <div id="editor-msg"></div>`;
+
+  if (editorSnippets.length === 0) {
+    // Initialise selection to all snippets with CSS on first render
+    if (editorSelected.size === 0 && allSnippets.length > 0) {
+      allSnippets.forEach(s => { if (s.sanityCode && s.sanityCode.trim()) editorSelected.add(s.key); });
+    }
+    const selCount = editorSelected.size;
+
+    html += `
+      <div class="info-box">
+        <strong>How to use:</strong><br>
+        1. Click <strong>Browse…</strong> to select a folder for this solution's snippets (or it will prompt automatically).<br>
+        2. Select which snippets to pull below, then click <strong>⬇ Pull Selected</strong>.<br>
+        3. Edit the files in Cursor — use AI, multi-file find/replace, whatever you need.<br>
+        4. Click <strong>⟳ Load &amp; Diff</strong> to compare your edits against Sanity.<br>
+        5. Approve individual changes, then click <strong>⬆ Push Approved</strong>.
+      </div>`;
+
+    html += `
+      <div class="select-bar">
+        <input type="checkbox" class="snippet-select-cb" id="sel-all"
+          ${selCount === totalCount ? 'checked' : (selCount > 0 ? 'indeterminate-js' : '')}
+          onchange="toggleSelectAll(this.checked)">
+        <label for="sel-all" class="select-bar-label">
+          <strong>${selCount}</strong> of ${totalCount} snippets selected for pull
+          (${withCssCount} have CSS)
+        </label>
+        <div style="width:1px;height:20px;background:#2d3148;margin:0 4px;"></div>
+        <input type="text" id="snippet-filter-input" placeholder="Filter snippets..."
+          style="background:#0f1117;border:1px solid #2d3148;border-radius:5px;color:#e2e8f0;padding:5px 10px;font-size:11px;outline:none;width:160px;transition:border-color 0.15s;"
+          oninput="filterSnippets(this.value)"
+          onfocus="this.style.borderColor='#7c3aed'"
+          onblur="this.style.borderColor='#2d3148'">
+        <button class="btn btn-secondary btn-sm" onclick="selectOnlyCss()">Select with CSS</button>
+        <button class="btn btn-secondary btn-sm" onclick="selectNone()">None</button>
+      </div>`;
+
+    const groups = groupSnippets(allSnippets);
+    groups.forEach(g => {
+      const allSel = g.snippets.every(s => editorSelected.has(s.key));
+      const anySel = g.snippets.some(s => editorSelected.has(s.key));
+      const groupClass = allSel ? 'all-selected' : (anySel ? 'partially-selected' : '');
+      const totalLines = g.snippets.reduce((sum, s) => sum + (s.sanityCode ? s.sanityCode.split('\n').length : 0), 0);
+      const cssCount = g.snippets.filter(s => s.sanityCode && s.sanityCode.trim()).length;
+
+      const groupFilterText = esc(g.groupLabel.toLowerCase() + ' ' + g.groupKey.toLowerCase());
+      html += `<div class="module-group ${groupClass}" id="mg-${esc(g.groupKey)}" data-filter="${groupFilterText}">
+        <div class="module-group-header" onclick="toggleModuleGroupCollapse('${esc(g.groupKey)}')">
+          <input type="checkbox" class="snippet-select-cb" id="mg-cb-${esc(g.groupKey)}"
+            ${allSel ? 'checked' : ''}
+            onclick="event.stopPropagation()"
+            onchange="toggleModuleSelect('${esc(g.groupKey)}', this.checked)">
+          <label class="module-group-title" for="mg-cb-${esc(g.groupKey)}" onclick="event.stopPropagation(); event.preventDefault(); document.getElementById('mg-cb-${esc(g.groupKey)}').click()">
+            ${esc(g.groupLabel)}
+            ${badge('count', `${g.snippets.length} snippet${g.snippets.length !== 1 ? 's' : ''}`)}
+            ${cssCount > 0 ? badge('css', `${totalLines} lines`) : badge('empty', 'no CSS')}
+          </label>
+          <span class="group-chevron">▼</span>
+        </div>
+        <div class="module-group-children">`;
+
+      g.snippets.forEach(s => {
+        const hasCss = !!(s.sanityCode && s.sanityCode.trim());
+        const isSelected = editorSelected.has(s.key);
+        const isToggle = s.key.includes('__toggle__');
+        const snippetLabel = isToggle
+          ? s.label.replace(/^.*?\s→\s/, '').replace(/\s*\(toggle CSS\)\s*$/, '')
+          : g.groupLabel;
+        const filterText = esc((snippetLabel + ' ' + s.filename + ' ' + s.key).toLowerCase());
+        html += `<div class="child-snippet-row" id="sc-pre-${esc(s.key)}" data-filter="${filterText}">
+          <input type="checkbox" class="snippet-select-cb" id="sel-${esc(s.key)}"
+            ${isSelected ? 'checked' : ''}
+            onchange="toggleSnippetSelect('${esc(s.key)}', this.checked, '${esc(g.groupKey)}')">
+          <label for="sel-${esc(s.key)}" class="child-snippet-label" style="cursor:pointer">
+            ${isToggle
+              ? `<span class="child-type-tag">toggle</span> ${esc(snippetLabel)}`
+              : `<span class="child-type-tag">template</span> ${esc(g.groupLabel)}`
+            }
+            <span class="child-snippet-filename">${esc(s.filename)}</span>
+          </label>
+          ${hasCss ? badge('css', `${s.sanityCode.split('\n').length} lines`) : badge('empty', 'empty')}
+        </div>`;
+      });
+
+      html += `</div></div>`;
+    });
+  } else {
+    // Show diff view
+    editorSnippets.forEach(s => {
+      const hasLocal = s.localCode !== null;
+      const hasChanged = hasLocal && s.localCode !== s.sanityCode;
+      const isApproved = editorApproved.has(s.key);
+      const cardClass = isApproved ? 'approved' : (hasChanged ? 'has-changes' : '');
+      const statusBadge = isApproved
+        ? badge('approved', '✓ approved')
+        : (hasChanged ? badge('changed', 'changed') : badge('unchanged', 'unchanged'));
+
+      html += `<div class="snippet-card ${cardClass}" id="sc-${esc(s.key)}">
+        <div class="snippet-card-header">
+          <div class="snippet-card-title">
+            ${esc(s.label)}
+            <span class="snippet-card-filename">${esc(s.filename)}</span>
+          </div>
+          ${statusBadge}
+          ${hasChanged ? `<button class="btn btn-secondary btn-sm" onclick="toggleSnippetCard('${esc(s.key)}')">Toggle Diff</button>` : ''}
+        </div>
+        ${hasChanged ? `
+        <div class="snippet-card-body" id="scb-${esc(s.key)}">
+          <div class="diff-container">
+            <div class="diff-pane">
+              <div class="diff-pane-label old">Sanity (current)</div>
+              <div class="diff-pre">${renderDiffLines(s.sanityCode, s.localCode, 'old')}</div>
+            </div>
+            <div class="diff-pane">
+              <div class="diff-pane-label new">Local (your edits)</div>
+              <div class="diff-pre">${renderDiffLines(s.sanityCode, s.localCode, 'new')}</div>
+            </div>
+          </div>
+          <div class="approve-row">
+            <input type="checkbox" class="approve-checkbox" id="approve-${esc(s.key)}"
+              ${isApproved ? 'checked' : ''}
+              onchange="toggleApprove('${esc(s.key)}', this.checked)">
+            <label class="approve-label" for="approve-${esc(s.key)}">
+              Approve this change for push to Sanity
+            </label>
+            ${s.pushResult ? `<span class="push-result ${s.pushResult.ok ? 'ok' : 'err'}">${esc(s.pushResult.msg)}</span>` : ''}
+          </div>
+        </div>` : ''}
+      </div>`;
+    });
+  }
+
+  return html;
+}
+
+function bindEditorEvents() {
+  document.getElementById('btn-browse')?.addEventListener('click', browseFolder);
+  document.getElementById('btn-pull')?.addEventListener('click', pullSnippets);
+  document.getElementById('btn-load')?.addEventListener('click', loadLocalFiles);
+  document.getElementById('btn-clear')?.addEventListener('click', clearFolder);
+  document.getElementById('btn-push')?.addEventListener('click', pushApproved);
+  // Keep path input in sync with display label
+  document.getElementById('folder-path-input')?.addEventListener('input', e => {
+    editorFolderPath = e.target.value;
+  });
+  // Set indeterminate state on select-all and module group checkboxes (can only be set via JS)
+  updateSelectAllState();
+  if (currentSolution) {
+    groupSnippets(extractSnippets(currentSolution)).forEach(g => updateModuleGroupCheckbox(g.groupKey));
+  }
+}
+
+function toggleSnippetSelect(key, checked, groupKey) {
+  if (checked) editorSelected.add(key);
+  else editorSelected.delete(key);
+  // Refresh parent module group checkbox if provided
+  if (groupKey) updateModuleGroupCheckbox(groupKey);
+  // Update select-all checkbox state
+  updateSelectAllState();
+  // Update pull button count
+  const pullBtn = document.getElementById('btn-pull');
+  if (pullBtn && editorSnippets.length === 0) {
+    pullBtn.textContent = `⬇ Pull${editorSelected.size > 0 ? ` (${editorSelected.size})` : ''}`;
+  }
+  // Update select bar label
+  const allSnippets = extractSnippets(currentSolution);
+  const lbl = document.querySelector('.select-bar-label');
+  if (lbl) lbl.innerHTML = `<strong>${editorSelected.size}</strong> of ${allSnippets.length} snippets selected for pull (${allSnippets.filter(s=>s.sanityCode&&s.sanityCode.trim()).length} have CSS)`;
+}
+
+function toggleModuleSelect(groupKey, checked) {
+  const allSnippets = extractSnippets(currentSolution);
+  const groups = groupSnippets(allSnippets);
+  const group = groups.find(g => g.groupKey === groupKey);
+  if (!group) return;
+  group.snippets.forEach(s => {
+    if (checked) editorSelected.add(s.key);
+    else editorSelected.delete(s.key);
+    const cb = document.getElementById('sel-' + s.key);
+    if (cb) cb.checked = checked;
+  });
+  updateModuleGroupCheckbox(groupKey);
+  updateSelectAllState();
+  const pullBtn = document.getElementById('btn-pull');
+  if (pullBtn && editorSnippets.length === 0) {
+    pullBtn.textContent = `⬇ Pull${editorSelected.size > 0 ? ` (${editorSelected.size})` : ''}`;
+  }
+  const lbl = document.querySelector('.select-bar-label');
+  if (lbl) lbl.innerHTML = `<strong>${editorSelected.size}</strong> of ${allSnippets.length} snippets selected for pull (${allSnippets.filter(s=>s.sanityCode&&s.sanityCode.trim()).length} have CSS)`;
+}
+
+function updateModuleGroupCheckbox(groupKey) {
+  const allSnippets = extractSnippets(currentSolution);
+  const groups = groupSnippets(allSnippets);
+  const group = groups.find(g => g.groupKey === groupKey);
+  if (!group) return;
+  const allSel = group.snippets.every(s => editorSelected.has(s.key));
+  const anySel = group.snippets.some(s => editorSelected.has(s.key));
+  const cb = document.getElementById('mg-cb-' + groupKey);
+  if (cb) { cb.checked = allSel; cb.indeterminate = !allSel && anySel; }
+  const groupEl = document.getElementById('mg-' + groupKey);
+  if (groupEl) {
+    groupEl.classList.remove('all-selected', 'partially-selected');
+    if (allSel) groupEl.classList.add('all-selected');
+    else if (anySel) groupEl.classList.add('partially-selected');
+  }
+}
+
+function toggleModuleGroupCollapse(groupKey) {
+  document.getElementById('mg-' + groupKey)?.classList.toggle('group-collapsed');
+}
+
+function toggleSelectAll(checked) {
+  const allSnippets = extractSnippets(currentSolution);
+  allSnippets.forEach(s => {
+    if (checked) editorSelected.add(s.key);
+    else editorSelected.delete(s.key);
+    const cb = document.getElementById('sel-' + s.key);
+    if (cb) cb.checked = checked;
+  });
+  groupSnippets(allSnippets).forEach(g => updateModuleGroupCheckbox(g.groupKey));
+  const pullBtn = document.getElementById('btn-pull');
+  if (pullBtn && editorSnippets.length === 0) {
+    pullBtn.textContent = `⬇ Pull${editorSelected.size > 0 ? ` (${editorSelected.size})` : ''}`;
+  }
+  const lbl = document.querySelector('.select-bar-label');
+  if (lbl) lbl.innerHTML = `<strong>${editorSelected.size}</strong> of ${allSnippets.length} snippets selected for pull (${allSnippets.filter(s=>s.sanityCode&&s.sanityCode.trim()).length} have CSS)`;
+}
+
+function selectOnlyCss() {
+  const allSnippets = extractSnippets(currentSolution);
+  editorSelected = new Set();
+  allSnippets.forEach(s => {
+    const hasCss = !!(s.sanityCode && s.sanityCode.trim());
+    const cb = document.getElementById('sel-' + s.key);
+    if (hasCss) { editorSelected.add(s.key); if (cb) cb.checked = true; }
+    else { if (cb) cb.checked = false; }
+  });
+  groupSnippets(allSnippets).forEach(g => updateModuleGroupCheckbox(g.groupKey));
+  updateSelectAllState();
+  const pullBtn = document.getElementById('btn-pull');
+  if (pullBtn && editorSnippets.length === 0) pullBtn.textContent = `⬇ Pull (${editorSelected.size})`;
+  const lbl = document.querySelector('.select-bar-label');
+  if (lbl) lbl.innerHTML = `<strong>${editorSelected.size}</strong> of ${allSnippets.length} snippets selected for pull (${allSnippets.filter(s=>s.sanityCode&&s.sanityCode.trim()).length} have CSS)`;
+}
+
+function selectNone() {
+  const allSnippets = extractSnippets(currentSolution);
+  editorSelected = new Set();
+  allSnippets.forEach(s => {
+    const cb = document.getElementById('sel-' + s.key);
+    if (cb) cb.checked = false;
+  });
+  groupSnippets(allSnippets).forEach(g => updateModuleGroupCheckbox(g.groupKey));
+  updateSelectAllState();
+  const pullBtn = document.getElementById('btn-pull');
+  if (pullBtn && editorSnippets.length === 0) pullBtn.textContent = `⬇ Pull`;
+  const lbl = document.querySelector('.select-bar-label');
+  if (lbl) lbl.innerHTML = `<strong>0</strong> of ${allSnippets.length} snippets selected for pull (${allSnippets.filter(s=>s.sanityCode&&s.sanityCode.trim()).length} have CSS)`;
+}
+
+function filterSnippets(query) {
+  const q = query.toLowerCase().trim();
+
+  // Filter child snippet rows
+  document.querySelectorAll('.child-snippet-row').forEach(row => {
+    const filterText = row.getAttribute('data-filter') || '';
+    const match = !q || filterText.includes(q);
+    row.style.display = match ? '' : 'none';
+  });
+
+  // Filter module groups - show if any child matches or group label matches
+  document.querySelectorAll('.module-group').forEach(group => {
+    const groupFilter = group.getAttribute('data-filter') || '';
+    const hasVisibleChildren = group.querySelectorAll('.child-snippet-row[style=""], .child-snippet-row:not([style])').length > 0;
+    const groupMatch = !q || groupFilter.includes(q);
+    const match = groupMatch || hasVisibleChildren;
+    group.style.display = match ? '' : 'none';
+    // Expand groups that have matches when filtering
+    if (match && q) group.classList.remove('group-collapsed');
+  });
+}
+
+function updateSelectAllState() {
+  const allSnippets = extractSnippets(currentSolution);
+  const selAll = document.getElementById('sel-all');
+  if (!selAll) return;
+  if (editorSelected.size === 0) { selAll.checked = false; selAll.indeterminate = false; }
+  else if (editorSelected.size === allSnippets.length) { selAll.checked = true; selAll.indeterminate = false; }
+  else { selAll.checked = false; selAll.indeterminate = true; }
+}
+
+async function browseFolder() {
+  if (!window.showDirectoryPicker) {
+    showEditorMsg('error', 'File System Access API not supported. Use Chrome.');
+    return;
+  }
+  try {
+    const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    editorFolderHandle = handle;
+    editorFolderPath = handle.name;
+    saveFolderHandle(handle);
+    const input = document.getElementById('folder-path-input');
+    if (input) {
+      input.value = handle.name;
+      input.classList.add('has-folder');
+    }
+    showEditorMsg('info', `Folder "${handle.name}" selected. Click Pull to write snippets, or Load &amp; Diff if you've already edited them.`);
+  } catch (e) {
+    if (e.name !== 'AbortError') showEditorMsg('error', e.message);
+  }
+}
+
+function toggleSnippetCard(key) {
+  document.getElementById('scb-' + key)?.parentElement?.classList.toggle('collapsed');
+}
+
+function toggleApprove(key, checked) {
+  if (checked) editorApproved.add(key);
+  else editorApproved.delete(key);
+  // Update card class without full re-render
+  const card = document.getElementById('sc-' + key);
+  if (card) {
+    card.classList.remove('has-changes', 'approved');
+    const s = editorSnippets.find(x => x.key === key);
+    const hasChanged = s && s.localCode !== null && s.localCode !== s.sanityCode;
+    if (checked) card.classList.add('approved');
+    else if (hasChanged) card.classList.add('has-changes');
+  }
+  // Update summary counts
+  updateEditorSummary();
+}
+
+function updateEditorSummary() {
+  const changedCount = editorSnippets.filter(s => s.localCode !== null && s.localCode !== s.sanityCode).length;
+  const approvedCount = editorApproved.size;
+  const statusEl = document.querySelector('.editor-status');
+  if (statusEl) {
+    const total = extractSnippets(currentSolution).length;
+    const withCss = extractSnippets(currentSolution).filter(s => s.sanityCode && s.sanityCode.trim()).length;
+    statusEl.innerHTML = `<strong>${total}</strong> snippets total · <strong>${withCss}</strong> with CSS · <strong>${changedCount}</strong> changed · <strong>${approvedCount}</strong> approved`;
+  }
+  // Show/hide push button
+  const toolbar = document.querySelector('.editor-toolbar');
+  if (toolbar) {
+    let pushSection = toolbar.querySelector('#btn-push')?.parentElement?.parentElement;
+    if (approvedCount > 0 && !document.getElementById('btn-push')) {
+      const div = document.createElement('div');
+      div.style.display = 'contents';
+      div.innerHTML = `<div class="editor-toolbar-divider"></div><div class="editor-toolbar-section"><button class="btn btn-success btn-sm" id="btn-push">⬆ Push ${approvedCount} Approved</button></div>`;
+      toolbar.appendChild(div);
+      document.getElementById('btn-push')?.addEventListener('click', pushApproved);
+    } else if (document.getElementById('btn-push')) {
+      document.getElementById('btn-push').textContent = `⬆ Push ${approvedCount} Approved`;
+    }
+  }
+}
+
+// ============================================================
+// DIFF ENGINE
+// ============================================================
+
+/**
+ * Compute a line-level diff between oldText and newText.
+ * Returns an array of { type: 'added'|'removed'|'equal', line: string }
+ */
+function computeLineDiff(oldText, newText) {
+  const oldLines = (oldText || '').split('\n');
+  const newLines = (newText || '').split('\n');
+  const result = [];
+
+  // LCS-based diff using dynamic programming
+  const m = oldLines.length;
+  const n = newLines.length;
+
+  // Build LCS table (only need two rows for memory efficiency)
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (oldLines[i - 1] === newLines[j - 1]) dp[i][j] = dp[i-1][j-1] + 1;
+      else dp[i][j] = Math.max(dp[i-1][j], dp[i][j-1]);
+    }
+  }
+
+  // Backtrack
+  const ops = [];
+  let i = m, j = n;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && oldLines[i-1] === newLines[j-1]) {
+      ops.push({ type: 'equal', line: oldLines[i-1] });
+      i--; j--;
+    } else if (j > 0 && (i === 0 || dp[i][j-1] >= dp[i-1][j])) {
+      ops.push({ type: 'added', line: newLines[j-1] });
+      j--;
+    } else {
+      ops.push({ type: 'removed', line: oldLines[i-1] });
+      i--;
+    }
+  }
+  return ops.reverse();
+}
+
+/**
+ * Render diff lines for one pane (old or new).
+ * Shows context lines dimmed, changed lines highlighted.
+ * Collapses long unchanged runs.
+ */
+function renderDiffLines(oldText, newText, pane) {
+  const ops = computeLineDiff(oldText, newText);
+  const CONTEXT = 3;
+  const changed = new Set();
+  ops.forEach((op, idx) => { if (op.type !== 'equal') changed.add(idx); });
+
+  // Determine which lines to show
+  const visible = new Set();
+  changed.forEach(idx => {
+    for (let k = Math.max(0, idx - CONTEXT); k <= Math.min(ops.length - 1, idx + CONTEXT); k++) {
+      visible.add(k);
+    }
+  });
+
+  let html = '';
+  let lastVisible = -1;
+  ops.forEach((op, idx) => {
+    if (!visible.has(idx)) return;
+    if (lastVisible !== -1 && idx > lastVisible + 1) {
+      html += `<span class="diff-line context" style="color:#2d3148;font-style:italic">  ··· ${idx - lastVisible - 1} unchanged lines ···</span>\n`;
+    }
+    lastVisible = idx;
+    if (pane === 'old') {
+      if (op.type === 'equal') html += `<span class="diff-line context">${esc(op.line)}</span>\n`;
+      else if (op.type === 'removed') html += `<span class="diff-line removed">- ${esc(op.line)}</span>\n`;
+      // added lines show as blank space in old pane
+      else html += `<span class="diff-line" style="opacity:0.15">  ${esc(op.line)}</span>\n`;
+    } else {
+      if (op.type === 'equal') html += `<span class="diff-line context">${esc(op.line)}</span>\n`;
+      else if (op.type === 'added') html += `<span class="diff-line added">+ ${esc(op.line)}</span>\n`;
+      // removed lines show as blank space in new pane
+      else html += `<span class="diff-line" style="opacity:0.15">  ${esc(op.line)}</span>\n`;
+    }
+  });
+
+  if (!html) html = `<span class="diff-line context" style="color:#2d3148;font-style:italic">  (no visible changes in context)</span>`;
+  return html;
+}
+
+// ============================================================
+// PULL: Sanity → Local Files
+// ============================================================
+
+async function pullSnippets() {
+  if (!currentSolution) return;
+
+  // Ensure we have a folder with permission
+  if (editorFolderHandle) {
+    if (!await ensureFolderPermission()) {
+      showEditorMsg('error', 'Permission denied for the saved folder. Please Browse to select it again.');
+      editorFolderHandle = null; editorFolderPath = '';
+      return;
+    }
+  } else {
+    if (!window.showDirectoryPicker) {
+      showEditorMsg('error', 'File System Access API not supported in this browser. Use Chrome.');
+      return;
+    }
+    try {
+      const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      editorFolderHandle = handle;
+      editorFolderPath = handle.name;
+      saveFolderHandle(handle);
+    } catch (e) {
+      if (e.name !== 'AbortError') showEditorMsg('error', e.message);
+      return;
+    }
+  }
+
+  const btn = document.getElementById('btn-pull');
+  btn.disabled = true;
+  btn.textContent = '⬇ Pulling...';
+
+  try {
+    const allSnippets = extractSnippets(currentSolution);
+    // Only write files for selected snippets; if nothing selected, write all
+    const toPull = editorSelected.size > 0
+      ? allSnippets.filter(s => editorSelected.has(s.key))
+      : allSnippets;
+
+    if (toPull.length === 0) {
+      showEditorMsg('error', 'No snippets selected. Check at least one snippet to pull.');
+      return;
+    }
+
+    // Manifest always covers the pulled set so Load & Diff knows what to expect
+    const manifest = {
+      solutionId: currentSolution._id,
+      solutionSlug: currentSolution.slug || currentSolution._id,
+      solutionTitle: currentSolution.title,
+      pulledAt: new Date().toISOString(),
+      snippets: toPull.map(s => ({
+        key: s.key,
+        filename: s.filename,
+        label: s.label,
+        sanityPath: s.sanityPath,
+      })),
+    };
+
+    // Write manifest.json
+    const manifestHandle = await editorFolderHandle.getFileHandle('manifest.json', { create: true });
+    const manifestWriter = await manifestHandle.createWritable();
+    await manifestWriter.write(JSON.stringify(manifest, null, 2));
+    await manifestWriter.close();
+
+    // Write each selected CSS file
+    let written = 0;
+    const writeErrors = [];
+    for (const s of toPull) {
+      try {
+        const header = buildFileHeader(s);
+        const body = s.sanityCode || '';
+        const content = body.trim() ? `${header}\n\n${body}` : header + '\n';
+        const fileHandle = await editorFolderHandle.getFileHandle(s.filename, { create: true });
+        const writer = await fileHandle.createWritable();
+        await writer.write(content);
+        await writer.close();
+        written++;
+        console.log(`[pull] wrote "${s.filename}" (${content.length} chars)`);
+      } catch (fileErr) {
+        writeErrors.push(`${s.filename}: ${fileErr.message}`);
+        console.error(`[pull] failed "${s.filename}":`, fileErr);
+      }
+    }
+
+    // Update path input to show it's connected
+    const input = document.getElementById('folder-path-input');
+    if (input) { input.value = editorFolderPath || editorFolderHandle.name; input.classList.add('has-folder'); }
+
+    if (writeErrors.length > 0) {
+      showEditorMsg('error', `Wrote ${written} file${written !== 1 ? 's' : ''}, but ${writeErrors.length} failed:<br>${writeErrors.map(e => `• ${esc(e)}`).join('<br>')}`);
+    } else {
+      showEditorMsg('success', `Pulled ${written} snippet file${written !== 1 ? 's' : ''} into "${editorFolderHandle.name}". Now edit them in Cursor, then click Load &amp; Diff.`);
+    }
+  } catch (e) {
+    if (e.name !== 'AbortError') showEditorMsg('error', e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = `⬇ Pull${editorSelected.size > 0 ? ` (${editorSelected.size})` : ''}`;
+  }
+}
+
+// ============================================================
+// CLEAR: Delete pulled files from local folder
+// ============================================================
+
+async function clearFolder() {
+  if (!editorFolderHandle) {
+    showEditorMsg('error', 'No folder selected. Browse to a folder first.');
+    return;
+  }
+  if (!await ensureFolderPermission()) {
+    showEditorMsg('error', 'Permission denied for the saved folder. Please Browse to select it again.');
+    editorFolderHandle = null; editorFolderPath = '';
+    return;
+  }
+
+  // Read manifest to know which files to delete
+  let filesToDelete = [];
+  try {
+    const mHandle = await editorFolderHandle.getFileHandle('manifest.json');
+    const mFile = await mHandle.getFile();
+    const manifest = JSON.parse(await mFile.text());
+    filesToDelete = (manifest.snippets || []).map(s => s.filename);
+  } catch {
+    // No manifest — nothing to delete
+    showEditorMsg('error', 'No manifest.json found in this folder. Nothing to clear.');
+    return;
+  }
+
+  if (!confirm(`Delete ${filesToDelete.length} snippet file${filesToDelete.length !== 1 ? 's' : ''} and manifest.json from "${editorFolderHandle.name}"?`)) return;
+
+  const btn = document.getElementById('btn-clear');
+  if (btn) { btn.disabled = true; btn.textContent = '✕ Clearing...'; }
+
+  let deleted = 0;
+  const errors = [];
+
+  for (const filename of filesToDelete) {
+    try {
+      await editorFolderHandle.removeEntry(filename);
+      deleted++;
+    } catch (e) {
+      if (e.name !== 'NotFoundError') errors.push(`${filename}: ${e.message}`);
+    }
+  }
+
+  // Delete manifest last
+  try {
+    await editorFolderHandle.removeEntry('manifest.json');
+  } catch (_) {}
+
+  // Reset editor state back to selection screen
+  editorSnippets = [];
+  editorApproved = new Set();
+
+  if (errors.length > 0) {
+    showEditorMsg('error', `Deleted ${deleted} file${deleted !== 1 ? 's' : ''}, but ${errors.length} failed:<br>${errors.map(e => `• ${esc(e)}`).join('<br>')}`);
+  } else {
+    showEditorMsg('success', `Cleared ${deleted} file${deleted !== 1 ? 's' : ''} from "${editorFolderHandle.name}". Select snippets and Pull again.`);
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = '✕ Clear Folder'; }
+  renderContent();
+}
+
+// ============================================================
+// LOAD: Local Files → Diff View
+// ============================================================
+
+async function loadLocalFiles() {
+  if (!currentSolution) return;
+
+  // Ensure we have a folder with permission
+  if (editorFolderHandle) {
+    if (!await ensureFolderPermission()) {
+      showEditorMsg('error', 'Permission denied for the saved folder. Please Browse to select it again.');
+      editorFolderHandle = null; editorFolderPath = '';
+      return;
+    }
+  } else {
+    if (!window.showDirectoryPicker) {
+      showEditorMsg('error', 'File System Access API not supported. Use Chrome.');
+      return;
+    }
+    try {
+      const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      editorFolderHandle = handle;
+      editorFolderPath = handle.name;
+      saveFolderHandle(handle);
+    } catch (e) {
+      if (e.name !== 'AbortError') showEditorMsg('error', e.message);
+      return;
+    }
+  }
+
+  const btn = document.getElementById('btn-load');
+  btn.disabled = true;
+  btn.textContent = '⟳ Loading...';
+
+  try {
+    // Read manifest.json directly from the selected folder
+    let manifest = null;
+    try {
+      const mHandle = await editorFolderHandle.getFileHandle('manifest.json');
+      const mFile = await mHandle.getFile();
+      manifest = JSON.parse(await mFile.text());
+    } catch {
+      showEditorMsg('error', 'No manifest.json found in this folder. Click Pull first to write the snippets here.');
+      return;
+    }
+
+    if (manifest.solutionId !== currentSolution._id) {
+      showEditorMsg('error', `This folder contains snippets for "${manifest.solutionTitle}", but you have "${currentSolution.title}" loaded. Select the correct folder or switch solutions.`);
+      return;
+    }
+
+    // Read each CSS file
+    const sanitySnippets = extractSnippets(currentSolution);
+    const sanityMap = new Map(sanitySnippets.map(s => [s.key, s]));
+
+    const loaded = [];
+    for (const entry of manifest.snippets) {
+      const sanity = sanityMap.get(entry.key);
+      let localCode = null;
+      try {
+        const fHandle = await editorFolderHandle.getFileHandle(entry.filename);
+        const f = await fHandle.getFile();
+        localCode = stripFileHeader(await f.text());
+      } catch {
+        // File missing — treat as no local version
+      }
+      loaded.push({
+        key: entry.key,
+        filename: entry.filename,
+        label: entry.label,
+        sanityPath: entry.sanityPath,
+        sanityCode: sanity?.sanityCode ?? '',
+        localCode,
+        pushResult: null,
+      });
+    }
+
+    editorSnippets = loaded;
+    editorApproved = new Set();
+
+    // Update path input
+    const input = document.getElementById('folder-path-input');
+    if (input) { input.value = editorFolderPath || editorFolderHandle.name; input.classList.add('has-folder'); }
+
+    const changedCount = loaded.filter(s => s.localCode !== null && s.localCode !== s.sanityCode).length;
+    showEditorMsg('success', `Loaded ${loaded.length} snippets from "${editorFolderHandle.name}". ${changedCount} have local changes.`);
+    renderContent();
+  } catch (e) {
+    if (e.name !== 'AbortError') showEditorMsg('error', e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⟳ Load &amp; Diff';
+  }
+}
+
+// ============================================================
+// PUSH: Approved Changes → Sanity
+// ============================================================
+
+async function pushApproved() {
+  if (editorApproved.size === 0) return;
+
+  const btn = document.getElementById('btn-push');
+  if (btn) { btn.disabled = true; btn.textContent = '⬆ Pushing...'; }
+
+  const toPush = editorSnippets.filter(s => editorApproved.has(s.key));
+  let successCount = 0;
+  let errorCount = 0;
+
+  for (const s of toPush) {
+    try {
+      // Build a patch mutation targeting the exact nested path using _key selectors
+      // Sanity patch paths use array[_key=="..."] syntax
+      const mutations = [{
+        patch: {
+          id: currentSolution._id,
+          set: {
+            [buildSanitySetPath(s.sanityPath)]: stripFileHeader(s.localCode),
+          },
+        },
+      }];
+
+      await sanityMutate(mutations);
+      s.pushResult = { ok: true, msg: '✓ Pushed' };
+      successCount++;
+      editorApproved.delete(s.key);
+    } catch (e) {
+      s.pushResult = { ok: false, msg: `✗ ${e.message}` };
+      errorCount++;
+    }
+  }
+
+  if (successCount > 0) {
+    showEditorMsg('success', `Pushed ${successCount} snippet${successCount > 1 ? 's' : ''} to Sanity as drafts. ${errorCount > 0 ? `${errorCount} failed — see details below.` : 'Publish from Sanity Studio when ready.'}`);
+    // Refresh current solution data from Sanity so diffs update
+    await refreshCurrentSolution();
+  } else {
+    showEditorMsg('error', `All ${errorCount} pushes failed. Check the errors below.`);
+  }
+
+  renderContent();
+}
+
+/**
+ * Convert a sanityPath like:
+ *   customizationModules[_key=="abc"].cssBlock.css.code
+ * into a Sanity mutation set path (same format, Sanity accepts it directly).
+ */
+function buildSanitySetPath(sanityPath) {
+  return sanityPath;
+}
+
+async function refreshCurrentSolution() {
+  try {
+    const solution = await sanityQuery(
+      `*[_type == "solution" && _id == $id && !(_id in path("drafts.**"))][0] {
+        _id, title, "slug": slug.current,
+        description[] { ..., asset->{ _id, url } },
+        customizationDescription[] { ..., asset->{ _id, url } },
+        integrationModules,
+        presets[] { _key, name, integrationModules },
+        customizationModules[] {
+          _key, name, inputType,
+          description[] { ..., asset->{ _id, url } },
+          "cssTemplate": cssBlock.css.code,
+          inputs[] {
+            _key, _type, label,
+            variable { variableName, rootVar, defaultValue },
+            "toggleCssCode": cssBlock.css.code,
+            externalImports[] { _type, srcUrl }
+          }
+        }
+      }`,
+      { id: currentSolution._id }
+    );
+    if (solution) {
+      currentSolution = solution;
+      // Update sanityCode in editorSnippets from refreshed data
+      const fresh = extractSnippets(solution);
+      const freshMap = new Map(fresh.map(s => [s.key, s]));
+      editorSnippets.forEach(s => {
+        const f = freshMap.get(s.key);
+        if (f) s.sanityCode = f.sanityCode;
+      });
+    }
+  } catch { /* non-fatal */ }
+}
+
+function showEditorMsg(type, msg) {
+  const el = document.getElementById('editor-msg');
+  if (!el) return;
+  const cls = type === 'success' ? 'success-box' : type === 'error' ? 'error-box' : 'info-box';
+  el.innerHTML = `<div class="${cls}">${esc(msg)}</div>`;
+}
+
+// ============================================================
+// CSS GENERATION LOGIC (mirrors the app's extractCodeFromInputs)
+// ============================================================
+function generateModuleCss(m) {
+  if (!m) return '';
+  const rootVars = new Map();
+  const variablesToReplace = new Map();
+  let cssCode = m.cssTemplate || '';
+
+  for (const inp of m.inputs || []) {
+    let dv = inp.variable?.defaultValue || '';
+    const rootVar = inp.variable?.rootVar;
+    const varName = inp.variable?.variableName;
+
+    switch (inp._type) {
+      case 'colorInput':
+      case 'textInput':
+      case 'textareaInput':
+      case 'numberInput':
+      case 'dropdownInput':
+      case 'faPickerInput':
+      case 'fontPickerInput':
+        if (rootVar && dv) rootVars.set(rootVar, dv);
+        if (varName && dv) variablesToReplace.set(varName, dv);
+        break;
+      case 'imageWithUploadInput':
+        if (rootVar && dv) rootVars.set(rootVar, `url('${dv}')`);
+        if (varName && dv) variablesToReplace.set(varName, dv);
+        break;
+      case 'toggleInput':
+        if (inp.toggleCssCode?.trim()) {
+          cssCode += `\n\n/* toggle: ${esc(inp.label||inp._key)} (shown as ON) */\n` + inp.toggleCssCode;
+        }
+        break;
+    }
+  }
+
+  // Build :root block
+  if (rootVars.size) {
+    const rootBlock = ':root {\n' +
+      Array.from(rootVars.entries())
+        .filter(([,v]) => v.trim())
+        .map(([k,v]) => `  --${k.replace(/^-+/,'')}: ${v};`)
+        .join('\n') +
+      '\n}';
+    cssCode = rootBlock + '\n\n' + cssCode;
+  }
+
+  // Replace {{variableName}} placeholders
+  for (const [name, value] of variablesToReplace) {
+    cssCode = cssCode.split(`{{${name}}}`).join(value);
+  }
+
+  // Strip leftover unreplaced {{...}} variables
+  cssCode = cssCode.replace(/\{\{[^}]+\}\}/g, '');
+
+  return cssCode.trim();
+}
+
+function buildIntegrationCss(modules, label) {
+  if (!modules?.length) return '';
+  const { rawBlocks, importUrls } = extractRawCss(modules);
+  if (!rawBlocks.length && !importUrls.length) return '';
+  const lines = [];
+  lines.push(
+    `/* ============================================================ */\n` +
+    `/* INTEGRATION: ${(label||'').toUpperCase()} */\n` +
+    `/* ============================================================ */`
+  );
+  for (const url of importUrls) lines.push(`@import url('${url}');`);
+  lines.push(...rawBlocks);
+  return lines.join('\n');
+}
+
+// ============================================================
+// PORTABLE TEXT RENDERER
+// ============================================================
+
+/**
+ * Convert a Sanity Portable Text array into an HTML string.
+ * Handles: text blocks (normal/h1-h4/blockquote/bullet/number),
+ * inline marks (strong, em, underline, link), and image blocks.
+ * Images use the resolved asset.url if available, otherwise build from _ref.
+ */
+function renderPortableText(blocks) {
+  if (!blocks || !blocks.length) return '';
+
+  function sanityImageUrl(block) {
+    // Prefer resolved URL from asset->
+    if (block.asset?.url) return block.asset.url;
+    // Fall back to building from _ref
+    const ref = block.asset?._ref || '';
+    if (!ref.startsWith('image-')) return '';
+    const parts = ref.split('-');
+    const ext = parts[parts.length - 1];
+    const dims = parts[parts.length - 2];
+    const id = parts.slice(1, parts.length - 2).join('-');
+    return `https://cdn.sanity.io/images/${PROJECT_ID}/production/${id}-${dims}.${ext}`;
+  }
+
+  function renderSpan(span, markDefs) {
+    let text = esc(span.text || '');
+    const marks = span.marks || [];
+    // Apply decorator marks
+    if (marks.includes('strong')) text = `<strong>${text}</strong>`;
+    if (marks.includes('em')) text = `<em>${text}</em>`;
+    if (marks.includes('underline')) text = `<span style="text-decoration:underline">${text}</span>`;
+    if (marks.includes('code')) text = `<code style="font-family:monospace;background:#1e2235;padding:1px 4px;border-radius:3px">${text}</code>`;
+    // Apply annotation marks (links etc.)
+    for (const mark of marks) {
+      const def = (markDefs || []).find(d => d._key === mark);
+      if (def?._type === 'link' && def.href) {
+        text = `<a href="${esc(def.href)}" target="_blank" rel="noopener">${text}</a>`;
+      }
+    }
+    return text;
+  }
+
+  const styleTagMap = { normal: 'p', h1: 'h1', h2: 'h2', h3: 'h3', h4: 'h4', blockquote: 'blockquote' };
+
+  let html = '';
+  let listStack = []; // track open list types
+
+  function closeLists() {
+    while (listStack.length) {
+      html += listStack.pop() === 'bullet' ? '</ul>' : '</ol>';
+    }
+  }
+
+  for (const block of blocks) {
+    if (block._type === 'image') {
+      closeLists();
+      const url = sanityImageUrl(block);
+      if (url) html += `<div class="pt-image"><img src="${esc(url)}" alt="" loading="lazy"></div>`;
+      continue;
+    }
+    if (block._type !== 'block') continue;
+
+    const listItem = block.listItem; // 'bullet' or 'number'
+    const level = block.level || 1;
+
+    if (listItem) {
+      // Open list if needed
+      if (!listStack.length || listStack[listStack.length - 1] !== listItem) {
+        if (listStack.length) html += listStack.pop() === 'bullet' ? '</ul>' : '</ol>';
+        html += listItem === 'bullet' ? '<ul>' : '<ol>';
+        listStack.push(listItem);
+      }
+      const content = (block.children || []).map(s => renderSpan(s, block.markDefs)).join('');
+      html += `<li>${content}</li>`;
+    } else {
+      closeLists();
+      const tag = styleTagMap[block.style] || 'p';
+      const content = (block.children || []).map(s => renderSpan(s, block.markDefs)).join('');
+      if (content.trim() || tag === 'p') html += `<${tag}>${content}</${tag}>`;
+    }
+  }
+  closeLists();
+  return html;
+}
+
+/**
+ * Render a collapsible "See Description" toggle panel.
+ * id: unique DOM id for this toggle pair
+ * blocks: Portable Text array
+ */
+function renderDescriptionToggle(id, blocks) {
+  if (!blocks || !blocks.length) return '';
+  const bodyHtml = renderPortableText(blocks);
+  if (!bodyHtml.trim()) return '';
+  return `
+    <span class="desc-toggle" id="dbt-${esc(id)}" onclick="toggleDesc('${esc(id)}')">
+      <span class="desc-arrow">▶</span> See Description
+    </span>
+    <div class="desc-panel" id="dbp-${esc(id)}">
+      <div class="pt-body">${bodyHtml}</div>
+    </div>`;
+}
+
+function toggleDesc(id) {
+  const btn = document.getElementById('dbt-' + id);
+  const panel = document.getElementById('dbp-' + id);
+  if (!btn || !panel) return;
+  const isOpen = panel.classList.toggle('open');
+  btn.classList.toggle('open', isOpen);
+  btn.querySelector('.desc-arrow').textContent = isOpen ? '▼' : '▶';
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function extractRawCss(modules) {
+  if (!modules) return { rawBlocks: [], importUrls: [] };
+  return {
+    rawBlocks: modules.filter(m => m._type==='rawCss' && m.css?.code?.trim()).map(m => m.css.code),
+    importUrls: modules.filter(m => m._type==='cssToImport' && m.srcUrl).map(m => m.srcUrl),
+  };
+}
+
+function renderCssModules(modules) {
+  if (!modules?.length) return '<p class="no-css">No modules.</p>';
+  const { rawBlocks, importUrls } = extractRawCss(modules);
+  if (!rawBlocks.length && !importUrls.length) return '<p class="no-css">No CSS (may be JS-only).</p>';
+  let html = '';
+  if (importUrls.length) {
+    html += `<div class="sub-label">${badge('import','@import URLs')}</div>`;
+    for (const url of importUrls) {
+      html += `<div class="import-url"><code>${esc(url)}</code><a href="${esc(url)}" target="_blank">↗</a></div>`;
+    }
+  }
+  if (rawBlocks.length) {
+    const combined = rawBlocks.join('\n\n');
+    html += `<div class="sub-label">${badge('css','Raw CSS')}</div>
+      <div class="code-wrap">
+        <pre>${esc(combined)}</pre>
+        <button class="copy-btn copy-btn-abs" onclick="copyCode(this)">Copy</button>
+      </div>`;
+  }
+  return html;
+}
+
+function section(id, titleHtml, bodyHtml, collapsed=false) {
+  return `<div class="section ${collapsed?'collapsed':''}" id="${id}">
+    <div class="section-header" onclick="toggleSection('${id}')">
+      <div class="section-title">${titleHtml}</div>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="section-body">${bodyHtml}</div>
+  </div>`;
+}
+
+function badge(type, text) {
+  return `<span class="badge badge-${type}">${text}</span>`;
+}
+
+function toggleSection(id) { document.getElementById(id)?.classList.toggle('collapsed'); }
+function toggleCux(id) { document.getElementById(id)?.classList.toggle('collapsed'); }
+
+function collapseAllCux() {
+  document.querySelectorAll('.cux-module').forEach(el => el.classList.add('collapsed'));
+}
+
+function expandAllCux() {
+  document.querySelectorAll('.cux-module').forEach(el => el.classList.remove('collapsed'));
+}
+
+function filterCuxModules(query) {
+  const q = query.toLowerCase().trim();
+  document.querySelectorAll('.cux-module').forEach(el => {
+    const title = el.querySelector('.cux-module-title')?.textContent.toLowerCase() || '';
+    const key = el.querySelector('.cux-module-key')?.textContent.toLowerCase() || '';
+    const match = !q || title.includes(q) || key.includes(q);
+    el.style.display = match ? '' : 'none';
+    // Expand matching modules, collapse non-matching
+    if (match && q) el.classList.remove('collapsed');
+  });
+}
+
+async function loadAllSolutions() {
+  const listEl = document.getElementById('solutionList');
+  listEl.innerHTML = '<div class="loading" style="padding:6px 4px;font-size:11px"><div class="spinner" style="width:12px;height:12px"></div> Loading...</div>';
+  try {
+    const solutions = await sanityQuery(`*[_type == "solution" && !(_id in path("drafts.**"))] | order(title asc) { _id, title, "slug": slug.current }`);
+    if (!solutions?.length) { listEl.innerHTML = '<span style="color:#475569;font-size:12px">None found</span>'; return; }
+    listEl.innerHTML = solutions.map(s =>
+      `<div class="solution-item" id="sol-${s._id}" onclick="selectSolution('${s._id}')">
+        <div class="sol-title">${esc(s.title||'Untitled')}</div>
+        <div class="sol-id">${s._id}</div>
+      </div>`).join('');
+  } catch(e) {
+    listEl.innerHTML = `<div style="color:#fca5a5;font-size:11px">${esc(e.message)}</div>`;
+  }
+}
+
+function selectSolution(id) {
+  document.getElementById('solutionId').value = id;
+  fetchSolution();
+}
+
+function highlightSidebarItem(id) {
+  document.querySelectorAll('.solution-item').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById('sol-' + id);
+  if (el) { el.classList.add('active'); el.scrollIntoView({ block: 'nearest' }); }
+}
+
+function copyCode(btn) {
+  var codeWrap = btn.closest('.code-wrap');
+  if (!codeWrap) {
+    var parent = btn.parentElement;
+    if (parent) {
+      var combinedView = parent.closest('.combined-view');
+      if (combinedView) {
+        codeWrap = combinedView.querySelector('.code-wrap');
+      }
+    }
+  }
+  var pre = codeWrap ? codeWrap.querySelector('pre') : null;
+  var text = pre ? pre.textContent : '';
+  
+  var orig = btn.textContent;
+  var fallbackSelect = function() {
+    if (pre) {
+      var selection = window.getSelection();
+      var range = document.createRange();
+      range.selectNodeContents(pre);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+    btn.textContent = '✓ Selected (Ctrl+C to copy)';
+    btn.classList.add('copied');
+    setTimeout(function() { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+  };
+  
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function() {
+      btn.textContent = '✓ Copied';
+      btn.classList.add('copied');
+      setTimeout(function() { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+    }).catch(function() {
+      fallbackSelect();
+    });
+  } else {
+    fallbackSelect();
+  }
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+window.addEventListener('load', () => {
+  const id = document.getElementById('solutionId').value.trim();
+  if (id) fetchSolution();
+});
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('solutionId').addEventListener('keydown', e => { if (e.key==='Enter') fetchSolution(); });
+  restoreFolderHandle();
+});
+</script>
+</body>
+</html>
