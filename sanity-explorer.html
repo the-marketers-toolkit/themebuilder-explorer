@@ -951,6 +951,26 @@ function renderEditor() {
   return html;
 }
 
+/**
+ * Keep left/right diff panes scrolled together (Snippet Editor diff view).
+ */
+function bindDiffScrollSync() {
+  document.querySelectorAll('.diff-container').forEach(container => {
+    const pres = container.querySelectorAll('.diff-pre');
+    if (pres.length !== 2) return;
+    const [left, right] = pres;
+    let ignore = false;
+    function syncFrom(source, target) {
+      if (ignore) return;
+      ignore = true;
+      target.scrollTop = source.scrollTop;
+      ignore = false;
+    }
+    left.addEventListener('scroll', () => syncFrom(left, right), { passive: true });
+    right.addEventListener('scroll', () => syncFrom(right, left), { passive: true });
+  });
+}
+
 function bindEditorEvents() {
   document.getElementById('btn-browse')?.addEventListener('click', browseFolder);
   document.getElementById('btn-pull')?.addEventListener('click', pullSnippets);
@@ -966,6 +986,7 @@ function bindEditorEvents() {
   if (currentSolution) {
     groupSnippets(extractSnippets(currentSolution)).forEach(g => updateModuleGroupCheckbox(g.groupKey));
   }
+  bindDiffScrollSync();
 }
 
 function toggleSnippetSelect(key, checked, groupKey) {
